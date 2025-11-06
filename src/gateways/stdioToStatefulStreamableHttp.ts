@@ -110,6 +110,12 @@ export async function stdioToStatefulStreamableHttp(
 
   // Handle POST requests for client-to-server communication
   app.post(streamableHttpPath, async (req, res) => {
+    // Extract bearer token from Authorization header
+    const authHeader = req.headers.authorization
+    const bearerToken = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : ''
+
     // Check for existing session ID
     const sessionId = req.headers['mcp-session-id'] as string | undefined
     let transport: StreamableHTTPServerTransport
@@ -137,7 +143,17 @@ export async function stdioToStatefulStreamableHttp(
         },
       })
       await server.connect(transport)
-      const child = spawn(stdioCmd, { shell: true })
+
+      // Create environment with bearer token
+      const env = { ...process.env }
+      if (bearerToken) {
+        env.BEARER_TOKEN = bearerToken
+      }
+
+      const child = spawn(stdioCmd, {
+        shell: true,
+        env: env,
+      })
       child.on('exit', (code, signal) => {
         logger.error(`Child exited: code=${code}, signal=${signal}`)
         transport.close()
