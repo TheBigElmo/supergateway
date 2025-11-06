@@ -122,6 +122,18 @@ export async function stdioToStatelessStreamableHttp(
       ? authHeader.slice(7)
       : ''
 
+    // Extract custom headers (starting with CUSTOM_) and prepare as environment variables
+    const customEnvVars: Record<string, string> = {}
+    Object.entries(req.headers).forEach(([key, value]) => {
+      if (key.toUpperCase().startsWith('CUSTOM_')) {
+        const envVarName = key.toUpperCase()
+        if (typeof value === 'string') {
+          customEnvVars[envVarName] = value
+          logger.info(`Custom header found: ${key} -> ${envVarName}`)
+        }
+      }
+    })
+
     try {
       const server = new Server(
         { name: 'supergateway', version: getVersion() },
@@ -133,8 +145,8 @@ export async function stdioToStatelessStreamableHttp(
 
       await server.connect(transport)
 
-      // Create environment with bearer token
-      const env = { ...process.env }
+      // Create environment with bearer token and custom headers
+      const env = { ...process.env, ...customEnvVars }
       if (bearerToken) {
         logger.info('Bearer token found')
         env.BEARER_TOKEN = bearerToken
