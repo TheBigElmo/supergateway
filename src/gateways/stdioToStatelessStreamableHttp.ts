@@ -116,6 +116,12 @@ export async function stdioToStatelessStreamableHttp(
     // to ensure complete isolation. A single instance would cause request ID collisions
     // when multiple clients connect concurrently.
 
+    // Extract bearer token from Authorization header
+    const authHeader = req.headers.authorization
+    const bearerToken = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : ''
+
     try {
       const server = new Server(
         { name: 'supergateway', version: getVersion() },
@@ -126,7 +132,18 @@ export async function stdioToStatelessStreamableHttp(
       })
 
       await server.connect(transport)
-      const child = spawn(stdioCmd, { shell: true })
+
+      // Create environment with bearer token
+      const env = { ...process.env }
+      if (bearerToken) {
+        env.BEARER_TOKEN = bearerToken
+      }
+
+      const child = spawn(stdioCmd, {
+        shell: true,
+        env: env,
+      })
+
       child.on('exit', (code, signal) => {
         logger.error(`Child exited: code=${code}, signal=${signal}`)
         transport.close()
