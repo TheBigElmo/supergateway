@@ -136,6 +136,7 @@ export async function stdioToStatelessStreamableHttp(
       // Create environment with bearer token
       const env = { ...process.env }
       if (bearerToken) {
+        logger.info('Bearer token found')
         env.BEARER_TOKEN = bearerToken
       }
 
